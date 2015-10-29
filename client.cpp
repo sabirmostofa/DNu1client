@@ -21,7 +21,7 @@
 using namespace std;
 
 char *bit_send(char *buffer, int cnt) {
-//    int msg_size;
+    //    int msg_size;
     char *buffer1, *ptr1, c;
     ptr1 = buffer1 = (char*) malloc(8 * cnt); //create a buffer
     while (cnt != 0) { //char is available
@@ -91,8 +91,6 @@ char analog_kanal_modell(char inputbit) { //add noise to the bit stream
     return outputbit;
 }
 
-
-
 int main() {
     cout << "test";
 
@@ -116,7 +114,7 @@ int main() {
 
     struct sockaddr_in addr;
 
-   // string st[4] = "";
+    // string st[4] = "";
 
 
     //    ifstream ifile("sample.txt");
@@ -142,11 +140,11 @@ int main() {
     }
 
     char* line;
-   // char key[] = "exit";
-   // char key1[] = "stop";
+    // char key[] = "exit";
+    // char key1[] = "stop";
 
 
-    const int FILE_CHUNK_SIZE = 1024;
+    const int FILE_CHUNK_SIZE = 1024*8;
 
 
 
@@ -157,25 +155,28 @@ int main() {
     printf("file size: %d bytes", fileSize);
 
 
+    fileSize *=8; //
 
     send(s, (const char*) &fileSize, sizeof (fileSize), 0);
-//
-    int counter=0;
+    //
+    
+    char *zBuffer =  bit_send(fileBuffer,fileSize);
+    int counter = 0;
     while (bytesSent < fileSize) {
         if (fileSize - bytesSent >= FILE_CHUNK_SIZE)
             bytesToSend = FILE_CHUNK_SIZE;
         else
             bytesToSend = fileSize - bytesSent;
-//
-//        char *converted = bit_send(line, strlen(line));
-//        printf("%s \n", converted);
-//        send(s, converted, strlen(converted), 0);
-       send(s, fileBuffer+bytesSent, bytesToSend, 0);
+        //
+        //        char *converted = bit_send(line, strlen(line));
+        //        printf("%s \n", converted);
+        //        send(s, converted, strlen(converted), 0);
+        send(s, zBuffer + bytesSent, bytesToSend, 0);
         bytesSent += bytesToSend;
-        if(++counter == 3)
+        if (++counter == 3)
             break;
     }
-    
+
     delete [] fileBuffer;
 
 
