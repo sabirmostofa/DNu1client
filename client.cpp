@@ -42,54 +42,27 @@ char *bit_send(char *buffer, int cnt) {
 }
 
 
-uint32_t lcg_seed = 1;
 
-uint32_t lcg_rand() {
-    //lcg_seed = ((uint64_t)lcg_seed * 279470273UL) % 4294967291UL;
-    lcg_seed = rand();
-    return lcg_seed;
-}
-// pseudo-random in [0,1]
-
-double randf() {
-    return lcg_rand() / (double) 0xFFFFFFFFUL;
-}
-const double PI = 3.14159265;
-// pseudo-Rauschen gaussian
-
-double randf_gauss() {
-    double mu = 0.0; // mittelwert
-    double sigma = 0.25; //!! varianz 0.45; try a values from 0.25 to 0.55
-    return mu + sigma * sqrt(-2.0 * log(randf())) * cos(2 * PI * randf());
+unsigned int hackers_delight_crc32(unsigned char *message) 
+{
+	int i, j;
+	unsigned int byte, crc, mask;
+	i = 0;
+	crc = 0xFFFFFFFF;
+	while (message[i] != 0) {
+		byte = message[i]; // Get next byte.
+		crc = crc ^ byte;
+		for (j = 7; j >= 0; j--) { // Do eight times.
+			mask = -(int)(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+		i = i + 1;
+	}
+	return ~crc;
 }
 
-/****************** Analog Kanal Modell mit Rauschen *******************
- *                am Eingang ein originelles Bit aus den Datastream
- *                das Bit ist in analoge Grösse umgewandelt, gedämmt
- *                und mit dem Rauschen zusammengemischt.
- *                Das Ergebnis wird wieder als ein Bit dargestellt
- *                Am Ausgang ein Bit mit möglicher Störung             
- ***********************************************************************/
-char analog_kanal_modell(char inputbit) { //add noise to the bit stream
-    double input_signal_level = 0.1;
-    char outputbit;
-    double in, noise, out;
-    /////////////////////  Digital to Analog conversion //////////////////
-    if (inputbit != '0') {
-        in = +input_signal_level;
-    } else {
-        in = -input_signal_level;
-    }
-    ///////////////////  Störungen im Kanal //////////////////    
-    noise = 0.1 * randf_gauss(); // pseudo-zufällige Zahlen, Gauss Verteilung
-    out = in + noise; // Analogsignal mit Rauschen
-    /////////////////// Analog to Digital conversion //////////////////
-    if (out > 0.0)
-        outputbit = '1';
-    else
-        outputbit = '0';
-    return outputbit;
-}
+
+
 
 int main() {
     cout << "test";
@@ -114,16 +87,6 @@ int main() {
 
     struct sockaddr_in addr;
 
-    // string st[4] = "";
-
-
-    //    ifstream ifile("sample.txt");
-    //
-    //    for (int i = 0; i++; i++) {
-    //        ifile.read(&*st.begin(), strlen(st) - 1);
-    //
-    //        cout << st;
-    //    }
 
 
     s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -156,8 +119,17 @@ int main() {
 
 
     fileSize *=8; //
+    
+    //get crc sum
+    
+    unsigned int crcVal = hackers_delight_crc32((unsigned char *)fileBuffer);
+    
+    printf("crc val: %d\n", crcVal);
 
     send(s, (const char*) &fileSize, sizeof (fileSize), 0);
+    
+    //send crcVal
+    send(s, (const char*) &crcVal, sizeof (crcVal), 0);
     //
     
     char *zBuffer =  bit_send(fileBuffer,fileSize);
